@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>AI Smart ID Scanner</title>
+  <title>Smart AI ID Scanner</title>
   <style>
     * { box-sizing: border-box; }
     body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f0f2f5; padding: 15px; margin: 0; }
@@ -30,7 +30,6 @@
     .btn-group { margin-top: 15px; display: flex; gap: 10px; }
     button { flex: 1; padding: 12px; font-size: 15px; font-weight: bold; border: none; border-radius: 6px; cursor: pointer; transition: 0.3s; }
     .btn-capture { background-color: #1a73e8; color: white; }
-    .btn-capture:hover { background-color: #1557b0; }
     .btn-reset { background-color: #6c757d; color: white; }
     
     #status { margin-top: 15px; text-align: center; font-weight: bold; color: #1a73e8; font-size: 14px; }
@@ -55,15 +54,15 @@
   <canvas id="canvas" style="display:none;"></canvas>
 
   <div class="btn-group">
-    <button class="btn-capture" id="scanBtn" onclick="scanWithGeminiAI()">AI વડે સ્કેન કરો</button>
+    <button class="btn-capture" id="scanBtn" onclick="scanWithAI()">AI વડે સ્કેન કરો</button>
     <button class="btn-reset" onclick="resetScan()">Clear</button>
   </div>
 
   <p id="status">કેમેરા રેડી છે...</p>
 
   <div class="output-box">
-    <h3>સ્કેન થયેલો ડેટા (Exact Data):</h3>
-    <textarea id="rawText" placeholder="AI દ્વારા સ્કેન થયેલ સંપૂર્ણ ડેટા અહીં દેખાશે..."></textarea>
+    <h3>સ્કેન થયેલો ડેટા:</h3>
+    <textarea id="rawText" placeholder="ડેટા અહીં દેખાશે..."></textarea>
   </div>
 </div>
 
@@ -74,8 +73,8 @@
   const rawText = document.getElementById('rawText');
   const scanBtn = document.getElementById('scanBtn');
 
-  // HERE: Place your Free Google Gemini API Key
-  const GEMINI_API_KEY = "YOUR_GEMINI_API_KEY_HERE"; 
+  // YAHAN APNI GOOGLE APPS SCRIPT KI URL PASTE KARI DO:
+  const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxDqc3fBP6RU5NQhJiUA5R5XQnXxR8lgj12T7MyF-Di0aQheoEu0namXyigDSPxompdQQ/exec";
 
   async function startCamera() {
     try {
@@ -83,22 +82,21 @@
         video: { facingMode: { exact: "environment" }, width: { ideal: 1920 }, height: { ideal: 1080 } }
       });
       video.srcObject = stream;
-      status.innerText = "કાર્ડ બોક્સની અંદર ગોઠવો અને 'AI વડે સ્કેન કરો' દબાવો.";
+      status.innerText = "કાર્ડ બોક્સમાં ગોઠવો અને સ્કેન દબાવો.";
     } catch (err) {
       try {
         const stream = await navigator.mediaDevices.getUserMedia({ video: true });
         video.srcObject = stream;
-        status.innerText = "કાર્ડ બોક્સની અંદર ગોઠવો અને 'AI વડે સ્કેન કરો' દબાવો.";
+        status.innerText = "કાર્ડ બોક્સમાં ગોઠવો અને સ્કેન દબાવો.";
       } catch (e) {
-        status.innerText = "કેમેરા ઓપન ન થઈ શક્યો. પરમિશન ચેક કરો.";
+        status.innerText = "કેમેરા ઓપન ન થઈ શક્યો.";
       }
     }
   }
 
-  async function scanWithGeminiAI() {
-    if (GEMINI_API_KEY === "YOUR_GEMINI_API_KEY_HERE" || !GEMINI_API_KEY) {
-      alert("કૃપા કરીને કોડમાં તમારી Google Gemini API Key ઉમેરો.");
-      status.innerText = "API Key ઉમેરવાની બાકી છે!";
+  async function scanWithAI() {
+    if (APPS_SCRIPT_URL.includes("TAMARI_WEB_APP_URL")) {
+      alert("કૃપા કરીને કોડમાં Apps Script URL ઉમેરો.");
       return;
     }
 
@@ -107,34 +105,16 @@
     canvas.height = video.videoHeight;
     context.drawImage(video, 0, 0, canvas.width, canvas.height);
 
-    // Convert Image to Base64
     const base64Data = canvas.toDataURL('image/jpeg', 0.8).split(',')[1];
 
-    status.innerText = "Google AI ડેટા રીડ કરી રહ્યું છે... (૨-૩ સેકન્ડ રાહ જુઓ)";
+    status.innerText = "ડેટા પ્રોસેસ થઈ રહ્યો છે... રાહ જુઓ.";
     scanBtn.disabled = true;
     rawText.value = "";
 
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`;
-
-    const requestBody = {
-      contents: [{
-        parts: [
-          { text: "Extract all text clearly from this ID card image. Read Gujarati, Hindi, and English accurately. Format the output in clean plain text line by line." },
-          {
-            inline_data: {
-              mime_type: "image/jpeg",
-              data: base64Data
-            }
-          }
-        ]
-      }]
-    };
-
     try {
-      const response = await fetch(url, {
+      const response = await fetch(APPS_SCRIPT_URL, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(requestBody)
+        body: JSON.stringify({ image: base64Data })
       });
 
       const result = await response.json();
@@ -144,7 +124,7 @@
         status.innerText = "સ્કેન સફળતાપૂર્વક પૂર્ણ થયું!";
         rawText.value = result.candidates[0].content.parts[0].text.trim();
       } else {
-        status.innerText = "AI ટેક્સ્ટ વાંચવામાં નિષ્ફળ રહ્યું. ફરી પ્રયાસ કરો.";
+        status.innerText = "ટેક્સ્ટ વાંચવામાં નિષ્ફળ રહ્યું.";
       }
     } catch (error) {
       scanBtn.disabled = false;
@@ -154,7 +134,7 @@
 
   function resetScan() {
     rawText.value = "";
-    status.innerText = "કાર્ડ બોક્સની અંદર ગોઠવો અને 'AI વડે સ્કેન કરો' દબાવો.";
+    status.innerText = "કાર્ડ બોક્સમાં ગોઠવો અને સ્કેન દબાવો.";
   }
 
   window.onload = startCamera;
