@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>ID Card Scanner with Live Camera</title>
+  <title>Advanced ID Card Scanner</title>
   <!-- Tesseract.js OCR Library -->
   <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
   <style>
@@ -12,8 +12,8 @@
     .container { max-width: 500px; margin: auto; background: white; border-radius: 12px; padding: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
     h2 { text-align: center; color: #333; margin-bottom: 20px; }
     
-    .camera-container { position: relative; width: 100%; height: 260px; background: #000; border-radius: 10px; overflow: hidden; display: flex; align-items: center; justify-content: center; }
-    video, canvas { width: 100%; height: 100%; object-fit: cover; }
+    .camera-container { position: relative; width: 100%; height: 280px; background: #000; border-radius: 10px; overflow: hidden; display: flex; align-items: center; justify-content: center; }
+    video { width: 100%; height: 100%; object-fit: cover; }
     
     .card-overlay {
       position: absolute;
@@ -32,26 +32,24 @@
     .btn-group { margin-top: 15px; display: flex; gap: 10px; }
     button { flex: 1; padding: 12px; font-size: 15px; font-weight: bold; border: none; border-radius: 6px; cursor: pointer; transition: 0.3s; }
     .btn-capture { background-color: #007bff; color: white; }
-    .btn-capture:hover { background-color: #0056b3; }
     .btn-reset { background-color: #6c757d; color: white; }
     
-    #status { margin-top: 15px; text-align: center; font-weight: bold; color: #555; font-size: 14px; }
+    #status { margin-top: 15px; text-align: center; font-weight: bold; color: #007bff; font-size: 14px; }
     
-    #capturedImg { width: 100%; margin-top: 15px; border-radius: 8px; display: none; border: 1px solid #ddd; }
     .output-box { margin-top: 15px; background: #f8f9fa; border: 1px solid #e9ecef; border-radius: 8px; padding: 12px; }
     .output-box h3 { margin-top: 0; font-size: 16px; color: #333; }
-    textarea { width: 100%; height: 120px; border: 1px solid #ccc; border-radius: 6px; padding: 8px; resize: none; font-size: 13px; }
+    textarea { width: 100%; height: 150px; border: 1px solid #ccc; border-radius: 6px; padding: 8px; resize: none; font-size: 14px; font-family: monospace; }
   </style>
 </head>
 <body>
 
 <div class="container">
-  <h2>ID કાર્ડ સ્કેનર</h2>
+  <h2>ID કાર્ડ સ્કેનર Pro</h2>
 
   <div class="camera-container">
     <video id="webcam" autoplay playsinline></video>
     <div class="card-overlay">
-      <span>કાર્ડ અહીં બોક્સની અંદર રાખો</span>
+      <span>કાર્ડ અહીં બોક્સની અંદર લાવો</span>
     </div>
   </div>
 
@@ -59,39 +57,37 @@
 
   <div class="btn-group">
     <button class="btn-capture" onclick="captureAndScan()">કાર્ડ સ્કેન કરો</button>
-    <button class="btn-reset" onclick="resetCamera()">ફરી સ્કેન કરો</button>
+    <button class="btn-reset" onclick="resetScan()">Clear</button>
   </div>
 
-  <p id="status">કેમેરા પરમિશન આપીને કાર્ડ બોક્સમાં ગોઠવો...</p>
-
-  <img id="capturedImg" alt="Captured Card">
+  <p id="status">કેમેરા ઓપન થઈ રહ્યો છે...</p>
 
   <div class="output-box">
-    <h3>સ્કેન થયેલો ટેક્સ્ટ (Extracted Data):</h3>
-    <textarea id="rawText" readonly placeholder="અહીં સ્કેન થયેલી વિગતો દેખાશે..."></textarea>
+    <h3>સ્કેન થયેલો ટેક્સ્ટ:</h3>
+    <textarea id="rawText" placeholder="સ્કેન કરેલો ડેટા અહીં દેખાશે..."></textarea>
   </div>
 </div>
 
 <script>
   const video = document.getElementById('webcam');
   const canvas = document.getElementById('canvas');
-  const capturedImg = document.getElementById('capturedImg');
   const status = document.getElementById('status');
   const rawText = document.getElementById('rawText');
-  let stream = null;
 
   async function startCamera() {
     try {
-      stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: { exact: "environment" } }
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: { exact: "environment" }, width: { ideal: 1920 }, height: { ideal: 1080 } }
       });
       video.srcObject = stream;
+      status.innerText = "કાર્ડને બોક્સની અંદર ગોઠવો અને સ્કેન બટન દબાવો.";
     } catch (err) {
       try {
-        stream = await navigator.mediaDevices.getUserMedia({ video: true });
+        const stream = await navigator.mediaDevices.getUserMedia({ video: true });
         video.srcObject = stream;
+        status.innerText = "કાર્ડને બોક્સની અંદર ગોઠવો અને સ્કેન બટન દબાવો.";
       } catch (e) {
-        status.innerText = "કેમેરા ઓપન ન થઈ શક્યો: " + e.message;
+        status.innerText = "કેમેરા ઓપન ન થઈ શક્યો. પરમિશન ચેક કરો.";
       }
     }
   }
@@ -100,29 +96,51 @@
     const context = canvas.getContext('2d');
     canvas.width = video.videoWidth;
     canvas.height = video.videoHeight;
-    context.drawImage(video, 0, 0, video.videoWidth, video.videoHeight);
+    
+    // 1. Photo Capture
+    context.drawImage(video, 0, 0, canvas.width, canvas.height);
 
-    const imageData = canvas.toDataURL('image/png');
-    capturedImg.src = imageData;
+    // 2. Image Pre-processing (High Contrast for OCR)
+    let imageData = context.getImageData(0, 0, canvas.width, canvas.height);
+    let data = imageData.data;
+    for (let i = 0; i < data.length; i += 4) {
+      // Grayscale
+      let avg = (data[i] + data[i + 1] + data[i + 2]) / 3;
+      // High Contrast threshold
+      let color = avg > 110 ? 255 : 0;
+      data[i]     = color; // Red
+      data[i + 1] = color; // Green
+      data[i + 2] = color; // Blue
+    }
+    context.putImageData(imageData, 0, 0);
 
-    status.innerText = "સ્કેન થઈ રહ્યું છે... કૃપા કરીને રાહ જુઓ.";
+    const processedImage = canvas.toDataURL('image/png');
+
+    status.innerText = "પ્રોસેસ થઈ રહ્યું છે... કૃપા કરીને ૪-૫ સેકન્ડ રાહ જુઓ.";
     rawText.value = "";
 
+    // 3. OCR Recognition
     Tesseract.recognize(
-      imageData,
+      processedImage,
       'eng',
-      { logger: m => console.log(m) }
+      { logger: m => {
+          if(m.status === 'recognizing text') {
+            status.innerText = `રીડ થઈ રહ્યું છે: ${Math.round(m.progress * 100)}%`;
+          }
+        }
+      }
     ).then(({ data: { text } }) => {
-      status.innerText = "સ્કેન સફળતાપૂર્વક પૂર્ણ થયું!";
-      rawText.value = text;
+      status.innerText = "સ્કેન પૂર્ણ થયું!";
+      // Clean up extra blank lines
+      rawText.value = text.replace(/\n\s*\n/g, '\n');
     }).catch(err => {
-      status.innerText = "સ્કેન કરવામાં ભૂલ આવી: " + err.message;
+      status.innerText = "સ્કેન કરવામાં ભૂલ આવી. ફરી પ્રયાસ કરો.";
     });
   }
 
-  function resetCamera() {
+  function resetScan() {
     rawText.value = "";
-    status.innerText = "કાર્ડ બોક્સમાં ગોઠવો અને સ્કેન કરો...";
+    status.innerText = "કાર્ડને બોક્સની અંદર ગોઠવો અને સ્કેન બટન દબાવો.";
   }
 
   window.onload = startCamera;
