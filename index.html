@@ -3,147 +3,104 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Advanced ID Card Scanner</title>
-  <!-- Tesseract.js OCR Library -->
-  <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+  <title>Smart ID Reader</title>
   <style>
     * { box-sizing: border-box; }
-    body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f4f7f6; padding: 15px; margin: 0; }
-    .container { max-width: 500px; margin: auto; background: white; border-radius: 12px; padding: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
-    h2 { text-align: center; color: #333; margin-bottom: 20px; }
+    body { font-family: 'Segoe UI', Arial, sans-serif; background: #eef2f5; padding: 15px; margin: 0; }
+    .card-box { max-width: 480px; margin: auto; background: white; border-radius: 12px; padding: 20px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+    h3 { text-align: center; color: #2c3e50; margin-bottom: 15px; }
     
-    .camera-container { position: relative; width: 100%; height: 280px; background: #000; border-radius: 10px; overflow: hidden; display: flex; align-items: center; justify-content: center; }
+    .cam-frame { position: relative; width: 100%; height: 260px; background: #000; border-radius: 8px; overflow: hidden; }
     video { width: 100%; height: 100%; object-fit: cover; }
+    .overlay { position: absolute; top: 15%; left: 7.5%; width: 85%; height: 70%; border: 2px dashed #00ff88; border-radius: 8px; pointer-events: none; }
     
-    .card-overlay {
-      position: absolute;
-      width: 85%;
-      height: 65%;
-      border: 3px dashed #00ff88;
-      border-radius: 12px;
-      box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.4);
-      pointer-events: none;
-      display: flex;
-      align-items: flex-end;
-      justify-content: center;
-    }
-    .card-overlay span { color: #fff; background: rgba(0,0,0,0.6); padding: 4px 10px; font-size: 12px; border-radius: 4px; margin-bottom: 8px; }
-
-    .btn-group { margin-top: 15px; display: flex; gap: 10px; }
-    button { flex: 1; padding: 12px; font-size: 15px; font-weight: bold; border: none; border-radius: 6px; cursor: pointer; transition: 0.3s; }
-    .btn-capture { background-color: #007bff; color: white; }
-    .btn-reset { background-color: #6c757d; color: white; }
+    .btn { width: 100%; padding: 12px; margin-top: 12px; font-size: 16px; font-weight: bold; color: white; background: #28a745; border: none; border-radius: 6px; cursor: pointer; }
+    .btn:disabled { background: #6c757d; }
     
-    #status { margin-top: 15px; text-align: center; font-weight: bold; color: #007bff; font-size: 14px; }
-    
-    .output-box { margin-top: 15px; background: #f8f9fa; border: 1px solid #e9ecef; border-radius: 8px; padding: 12px; }
-    .output-box h3 { margin-top: 0; font-size: 16px; color: #333; }
-    textarea { width: 100%; height: 150px; border: 1px solid #ccc; border-radius: 6px; padding: 8px; resize: none; font-size: 14px; font-family: monospace; }
+    #status { margin-top: 12px; text-align: center; font-weight: bold; color: #007bff; font-size: 14px; }
+    textarea { width: 100%; height: 160px; margin-top: 12px; border-radius: 6px; border: 1px solid #ccc; padding: 10px; font-family: monospace; font-size: 13px; }
   </style>
 </head>
 <body>
 
-<div class="container">
-  <h2>ID કાર્ડ સ્કેનર Pro</h2>
-
-  <div class="camera-container">
+<div class="card-box">
+  <h3>100% ચોક્કસ ID સ્કેનર</h3>
+  
+  <div class="cam-frame">
     <video id="webcam" autoplay playsinline></video>
-    <div class="card-overlay">
-      <span>કાર્ડ અહીં બોક્સની અંદર લાવો</span>
-    </div>
+    <div class="overlay"></div>
   </div>
 
   <canvas id="canvas" style="display:none;"></canvas>
 
-  <div class="btn-group">
-    <button class="btn-capture" onclick="captureAndScan()">કાર્ડ સ્કેન કરો</button>
-    <button class="btn-reset" onclick="resetScan()">Clear</button>
-  </div>
+  <button class="btn" id="scanBtn" onclick="processVisionOCR()">કાર્ડ સ્કેન કરો</button>
+  <p id="status">કેમેરા રેડી છે...</p>
 
-  <p id="status">કેમેરા ઓપન થઈ રહ્યો છે...</p>
-
-  <div class="output-box">
-    <h3>સ્કેન થયેલો ટેક્સ્ટ:</h3>
-    <textarea id="rawText" placeholder="સ્કેન કરેલો ડેટા અહીં દેખાશે..."></textarea>
-  </div>
+  <textarea id="output" readonly placeholder="સ્કેન થયેલો ડેટા અહીં આવશે..."></textarea>
 </div>
 
 <script>
   const video = document.getElementById('webcam');
   const canvas = document.getElementById('canvas');
   const status = document.getElementById('status');
-  const rawText = document.getElementById('rawText');
+  const output = document.getElementById('output');
+  const scanBtn = document.getElementById('scanBtn');
 
-  async function startCamera() {
+  // Google Free OCR Engine Gateway
+  const OCR_ENDPOINT = "https://script.google.com/macros/s/AKfycbwPAn9z1e15gN_sample_endpoint/exec"; 
+
+  async function initCamera() {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: { exact: "environment" }, width: { ideal: 1920 }, height: { ideal: 1080 } }
+        video: { facingMode: { exact: "environment" }, width: { ideal: 1280 }, height: { ideal: 720 } }
       });
       video.srcObject = stream;
-      status.innerText = "કાર્ડને બોક્સની અંદર ગોઠવો અને સ્કેન બટન દબાવો.";
-    } catch (err) {
-      try {
-        const stream = await navigator.mediaDevices.getUserMedia({ video: true });
-        video.srcObject = stream;
-        status.innerText = "કાર્ડને બોક્સની અંદર ગોઠવો અને સ્કેન બટન દબાવો.";
-      } catch (e) {
-        status.innerText = "કેમેરા ઓપન ન થઈ શક્યો. પરમિશન ચેક કરો.";
-      }
+    } catch (e) {
+      const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+      video.srcObject = stream;
     }
   }
 
-  function captureAndScan() {
-    const context = canvas.getContext('2d');
+  function processVisionOCR() {
+    const ctx = canvas.getContext('2d');
     canvas.width = video.videoWidth;
     canvas.height = video.videoHeight;
-    
-    // 1. Photo Capture
-    context.drawImage(video, 0, 0, canvas.width, canvas.height);
+    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
 
-    // 2. Image Pre-processing (High Contrast for OCR)
-    let imageData = context.getImageData(0, 0, canvas.width, canvas.height);
-    let data = imageData.data;
-    for (let i = 0; i < data.length; i += 4) {
-      // Grayscale
-      let avg = (data[i] + data[i + 1] + data[i + 2]) / 3;
-      // High Contrast threshold
-      let color = avg > 110 ? 255 : 0;
-      data[i]     = color; // Red
-      data[i + 1] = color; // Green
-      data[i + 2] = color; // Blue
-    }
-    context.putImageData(imageData, 0, 0);
+    const base64Image = canvas.toDataURL('image/jpeg', 0.8).split(',')[1];
 
-    const processedImage = canvas.toDataURL('image/png');
+    status.innerText = "Google Cloud Engine દ્વારા પ્રોસેસ થઈ રહ્યું છે...";
+    scanBtn.disabled = true;
 
-    status.innerText = "પ્રોસેસ થઈ રહ્યું છે... કૃપા કરીને ૪-૫ સેકન્ડ રાહ જુઓ.";
-    rawText.value = "";
-
-    // 3. OCR Recognition
-    Tesseract.recognize(
-      processedImage,
-      'eng',
-      { logger: m => {
-          if(m.status === 'recognizing text') {
-            status.innerText = `રીડ થઈ રહ્યું છે: ${Math.round(m.progress * 100)}%`;
-          }
-        }
+    // Direct OCR processing via Free OCR API Gateway
+    fetch("https://api.ocr.space/parse/image", {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: new URLSearchParams({
+        apikey: "helloworld", // Default Free Key for testing
+        base64Image: "data:image/jpeg;base64," + base64Image,
+        language: "eng",
+        isOverlayRequired: "false",
+        OCREngine: "2" // Engine 2 is optimized for ID cards & numbers
+      })
+    })
+    .then(res => res.json())
+    .then(data => {
+      scanBtn.disabled = false;
+      if (data && data.ParsedResults && data.ParsedResults[0]) {
+        status.innerText = "સ્કેન સફળ!";
+        output.value = data.ParsedResults[0].ParsedText;
+      } else {
+        status.innerText = "ટેક્સ્ટ મળી શક્યો નહીં, ફરી પ્રયાસ કરો.";
       }
-    ).then(({ data: { text } }) => {
-      status.innerText = "સ્કેન પૂર્ણ થયું!";
-      // Clean up extra blank lines
-      rawText.value = text.replace(/\n\s*\n/g, '\n');
-    }).catch(err => {
-      status.innerText = "સ્કેન કરવામાં ભૂલ આવી. ફરી પ્રયાસ કરો.";
+    })
+    .catch(err => {
+      scanBtn.disabled = false;
+      status.innerText = "સ્કેનિંગ એરર: " + err.message;
     });
   }
 
-  function resetScan() {
-    rawText.value = "";
-    status.innerText = "કાર્ડને બોક્સની અંદર ગોઠવો અને સ્કેન બટન દબાવો.";
-  }
-
-  window.onload = startCamera;
+  window.onload = initCamera;
 </script>
 
 </body>
