@@ -45,7 +45,7 @@
   <h2>AI-Powered ID Scanner</h2>
 
   <div class="camera-container">
-    <video id="webcam" autoplay playsinline></video>
+    <video id="webcam" autoplay playsinline muted></video>
     <div class="card-overlay">
       <span>કાર્ડ બોક્સની અંદર ગોઠવો</span>
     </div>
@@ -73,28 +73,25 @@
   const rawText = document.getElementById('rawText');
   const scanBtn = document.getElementById('scanBtn');
 
-  // YAHAN APNI GOOGLE APPS SCRIPT KI URL PASTE KARI DO:
   const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxDqc3fBP6RU5NQhJiUA5R5XQnXxR8lgj12T7MyF-Di0aQheoEu0namXyigDSPxompdQQ/exec";
 
   async function startCamera() {
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ 
-        video: { facingMode: "user" } 
-      });
+      // Simple and universal camera stream request to avoid black screen
+      const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
       video.srcObject = stream;
-      status.innerText = "કાર્ડ બોક્સમાં ગોઠવો અને સ્કેન દબાવો.";
+      status.innerText = "કેમેરા ચાલુ થઈ ગયો છે. કાર્ડ બોક્સમાં ગોઠવો.";
     } catch (err) {
-      try {
-        const stream = await navigator.mediaDevices.getUserMedia({ video: true });
-        video.srcObject = stream;
-        status.innerText = "કાર્ડ બોક્સમાં ગોઠવો અને સ્કેન દબાવો.";
-      } catch (e) {
-        status.innerText = "કેમેરા ઓપન ન થઈ શક્યો.";
-      }
+      status.innerText = "કેમેરા એરર: " + err.message;
     }
   }
 
   async function scanWithAI() {
+    if (!video.videoWidth) {
+      status.innerText = "કૃપા કરીને રાહ જુઓ, કેમેરા લોડ થઈ રહ્યો છે.";
+      return;
+    }
+
     const context = canvas.getContext('2d');
     canvas.width = video.videoWidth;
     canvas.height = video.videoHeight;
@@ -122,14 +119,14 @@
         status.innerText = "ટેક્સ્ટ વાંચવામાં નિષ્ફળ રહ્યું.";
       }
     } catch (error) {
-      scanBtn.disabled = false;
+      scanBtn.disabled.false;
       status.innerText = "એરર આવી: " + error.message;
     }
   }
 
   function resetScan() {
     rawText.value = "";
-    status.innerText = "કાર્ડ બોક્સમાં ગોઠવો અને સ્કેન દબાવો.";
+    status.innerText = "કેમેરા રેડી છે...";
   }
 
   window.onload = startCamera;
