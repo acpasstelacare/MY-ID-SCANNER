@@ -1,4 +1,124 @@
-async function scanWithAI() {
+<!DOCTYPE html>
+<html lang="gu">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Smart AI ID Scanner</title>
+  <style>
+    * { box-sizing: border-box; }
+    body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f0f2f5; padding: 15px; margin: 0; }
+    .container { max-width: 500px; margin: auto; background: white; border-radius: 12px; padding: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
+    h2 { text-align: center; color: #1a73e8; margin-bottom: 15px; font-size: 22px; }
+    
+    .camera-container { position: relative; width: 100%; height: 260px; background: #000; border-radius: 10px; overflow: hidden; display: flex; align-items: center; justify-content: center; }
+    video { width: 100%; height: 100%; object-fit: cover; }
+    
+    .card-overlay {
+      position: absolute;
+      width: 85%;
+      height: 65%;
+      border: 3px dashed #00ff88;
+      border-radius: 12px;
+      box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.4);
+      pointer-events: none;
+      display: flex;
+      align-items: flex-end;
+      justify-content: center;
+    }
+    .card-overlay span { color: #fff; background: rgba(0,0,0,0.6); padding: 4px 10px; font-size: 12px; border-radius: 4px; margin-bottom: 8px; }
+
+    .btn-group { margin-top: 15px; display: flex; gap: 8px; }
+    button { flex: 1; padding: 10px; font-size: 14px; font-weight: bold; border: none; border-radius: 6px; cursor: pointer; transition: 0.3s; }
+    .btn-capture { background-color: #1a73e8; color: white; }
+    .btn-switch { background-color: #ff9800; color: white; }
+    .btn-reset { background-color: #6c757d; color: white; }
+    
+    #status { margin-top: 15px; text-align: center; font-weight: bold; color: #1a73e8; font-size: 14px; }
+    
+    .output-box { margin-top: 15px; background: #f8f9fa; border: 1px solid #e9ecef; border-radius: 8px; padding: 12px; }
+    .output-box h3 { margin-top: 0; font-size: 16px; color: #333; }
+    textarea { width: 100%; height: 160px; border: 1px solid #ccc; border-radius: 6px; padding: 10px; resize: none; font-size: 14px; font-family: monospace; }
+  </style>
+</head>
+<body>
+
+<div class="container">
+  <h2>AI-Powered ID Scanner</h2>
+
+  <div class="camera-container">
+    <video id="webcam" autoplay playsinline muted></video>
+    <div class="card-overlay">
+      <span>કાર્ડ બોક્સની અંદર ગોઠવો</span>
+    </div>
+  </div>
+
+  <canvas id="canvas" style="display:none;"></canvas>
+
+  <div class="btn-group">
+    <button class="btn-capture" id="scanBtn" onclick="scanWithAI()">AI સ્કેન</button>
+    <button class="btn-switch" onclick="switchCamera()">કેમેરા બદલો</button>
+    <button class="btn-reset" onclick="resetScan()">Clear</button>
+  </div>
+
+  <p id="status">કેમેરા રેડી છે...</p>
+
+  <div class="output-box">
+    <h3>સ્કેન થયેલો ડેટા:</h3>
+    <textarea id="rawText" placeholder="ડેટા અહીં દેખાશે..."></textarea>
+  </div>
+</div>
+
+<script>
+  const video = document.getElementById('webcam');
+  const canvas = document.getElementById('canvas');
+  const status = document.getElementById('status');
+  const rawText = document.getElementById('rawText');
+  const scanBtn = document.getElementById('scanBtn');
+
+  const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxDqc3fBP6RU5NQhJiUA5R5XQnXxR8lgj12T7MyF-Di0aQheoEu0namXyigDSPxompdQQ/exec";
+
+  let useFrontCamera = false;
+
+  async function startCamera() {
+    if (video.srcObject) {
+      video.srcObject.getTracks().forEach(track => track.stop());
+    }
+
+    try {
+      const constraints = {
+        video: { facingMode: useFrontCamera ? "user" : { exact: "environment" } },
+        audio: false
+      };
+      const stream = await navigator.mediaDevices.getUserMedia(constraints);
+      video.srcObject = stream;
+      status.innerText = useFrontCamera ? "ફ્રન્ટ કેમેરા ચાલુ છે." : "બેક કેમેરા ચાલુ છે. કાર્ડ ગોઠવો.";
+    } catch (err) {
+      try {
+        const constraintsFallback = {
+          video: { facingMode: useFrontCamera ? "user" : "environment" },
+          audio: false
+        };
+        const stream = await navigator.mediaDevices.getUserMedia(constraintsFallback);
+        video.srcObject = stream;
+        status.innerText = useFrontCamera ? "ફ્રન્ટ કેમેરા ચાલુ છે." : "બેક કેમેરા ચાલુ છે. કાર્ડ ગોઠવો.";
+      } catch (e) {
+        try {
+          const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+          video.srcObject = stream;
+          status.innerText = "કેમેરા ચાલુ છે.";
+        } catch (ex) {
+          status.innerText = "કેમેરા એરર: " + ex.message;
+        }
+      }
+    }
+  }
+
+  function switchCamera() {
+    useFrontCamera = !useFrontCamera;
+    startCamera();
+  }
+
+  async function scanWithAI() {
     if (!video.videoWidth) {
       status.innerText = "કૃપા કરીને રાહ જુઓ, કેમેરા લોડ થઈ રહ્યો છે.";
       return;
@@ -16,7 +136,7 @@ async function scanWithAI() {
     rawText.value = "";
 
     try {
-      const response = await fetch("https://script.google.com/macros/s/AKfycbxDqc3fBP6RU5NQhJiUA5R5XQnXxR8lgj12T7MyF-Di0aQheoEu0namXyigDSPxompdQQ/exec", {
+      const response = await fetch(APPS_SCRIPT_URL, {
         method: "POST",
         body: JSON.stringify({ image: base64Data })
       });
@@ -35,3 +155,14 @@ async function scanWithAI() {
       status.innerText = "એરર આવી: " + error.message;
     }
   }
+
+  function resetScan() {
+    rawText.value = "";
+    status.innerText = "કેમેરા રેડી છે...";
+  }
+
+  window.onload = startCamera;
+</script>
+
+</body>
+</html>
