@@ -76,23 +76,25 @@
   // YAHAN APNI GOOGLE APPS SCRIPT KI URL PASTE KARI DO:
   const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxDqc3fBP6RU5NQhJiUA5R5XQnXxR8lgj12T7MyF-Di0aQheoEu0namXyigDSPxompdQQ/exec";
 
-async function startCamera() {
+  async function startCamera() {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ 
         video: { facingMode: "user" } 
       });
       video.srcObject = stream;
-      status.innerText = "Kard box ma gotho ane scan dabavo.";
+      status.innerText = "કાર્ડ બોક્સમાં ગોઠવો અને સ્કેન દબાવો.";
     } catch (err) {
       try {
         const stream = await navigator.mediaDevices.getUserMedia({ video: true });
         video.srcObject = stream;
-        status.innerText = "Kard box ma gotho ane scan dabavo.";
+        status.innerText = "કાર્ડ બોક્સમાં ગોઠવો અને સ્કેન દબાવો.";
       } catch (e) {
-        status.innerText = "Camera open na thai sakyo.";
+        status.innerText = "કેમેરા ઓપન ન થઈ શક્યો.";
       }
     }
   }
+
+  async function scanWithAI() {
     const context = canvas.getContext('2d');
     canvas.width = video.videoWidth;
     canvas.height = video.videoHeight;
