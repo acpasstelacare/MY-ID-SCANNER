@@ -75,14 +75,37 @@
 
   const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxDqc3fBP6RU5NQhJiUA5R5XQnXxR8lgj12T7MyF-Di0aQheoEu0namXyigDSPxompdQQ/exec";
 
-  async function startCamera() {
+ async function startCamera() {
     try {
-      // Simple and universal camera stream request to avoid black screen
-      const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" }, audio: false });
+      // પેહલા બેક કેમેરો (Back Camera) ટ્રાય કરશે
+      const stream = await navigator.mediaDevices.getUserMedia({ 
+        video: { facingMode: { exact: "environment" } }, 
+        audio: false 
+      });
       video.srcObject = stream;
-      status.innerText = "કેમેરા ચાલુ થઈ ગયો છે. કાર્ડ બોક્સમાં ગોઠવો.";
-    } catch (err) {
-      status.innerText = "કેમેરા એરર: " + err.message;
+      status.innerText = "બેક કેમેરા ચાલુ થઈ ગયો છે. કાર્ડ બોક્સમાં ગોઠવો.";
+    } catch (err1) {
+      try {
+        // જો બેક કેમેરામાં એરર આવે તો નોર્મલ બેક કેમેરા ટ્રાય કરશે
+        const stream = await navigator.mediaDevices.getUserMedia({ 
+          video: { facingMode: "environment" }, 
+          audio: false 
+        });
+        video.srcObject = stream;
+        status.innerText = "બેક કેમેરા ચાલુ થઈ ગયો છે. કાર્ડ બોક્સમાં ગોઠવો.";
+      } catch (err2) {
+        try {
+          // જો ઉપરના બંને ફેલ જાય તો જ ફ્રન્ટ કેમેરા ચાલુ કરશે
+          const stream = await navigator.mediaDevices.getUserMedia({ 
+            video: true, 
+            audio: false 
+          });
+          video.srcObject = stream;
+          status.innerText = "ફ્રન્ટ કેમેરા ચાલુ છે. કાર્ડ બોક્સમાં ગોઠવો.";
+        } catch (e) {
+          status.innerText = "કેમેરા ઓપન ન થઈ શક્યો: " + e.message;
+        }
+      }
     }
   }
 
