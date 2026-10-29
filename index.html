@@ -93,12 +93,12 @@
       }
     }
   }
-
-  async function scanWithAI() {
-    if (APPS_SCRIPT_URL.includes("https://script.google.com/macros/s/AKfycbxDqc3fBP6RU5NQhJiUA5R5XQnXxR8lgj12T7MyF-Di0aQheoEu0namXyigDSPxompdQQ/exec") || !APPS_SCRIPT_URL) {
-      alert("https://script.google.com/macros/s/AKfycbxDqc3fBP6RU5NQhJiUA5R5XQnXxR8lgj12T7MyF-Di0aQheoEu0namXyigDSPxompdQQ/exec");
+async function scanWithAI() {
+    if (!APPS_SCRIPT_URL || APPS_SCRIPT_URL.includes("https://script.google.com/macros/s/AKfycbxDqc3fBP6RU5NQhJiUA5R5XQnXxR8lgj12T7MyF-Di0aQheoEu0namXyigDSPxompdQQ/exec")) {
+      alert("કૃપા કરીને કોડમાં સાચી Apps Script URL ઉમેરો.");
       return;
     }
+
     const context = canvas.getContext('2d');
     canvas.width = video.videoWidth;
     canvas.height = video.videoHeight;
