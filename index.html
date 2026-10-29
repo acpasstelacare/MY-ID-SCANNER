@@ -16,7 +16,7 @@ async function scanWithAI() {
     rawText.value = "";
 
     try {
-      const response = await fetch(APPS_SCRIPT_URL, {
+      const response = await fetch("https://script.google.com/macros/s/AKfycbxDqc3fBP6RU5NQhJiUA5R5XQnXxR8lgj12T7MyF-Di0aQheoEu0namXyigDSPxompdQQ/exec", {
         method: "POST",
         body: JSON.stringify({ image: base64Data })
       });
